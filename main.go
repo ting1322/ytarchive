@@ -82,6 +82,9 @@ Options:
 		the script to access members-only content if you are a member
 		for the given stream's user. Must be netscape cookie format.
 
+	--cookies-from-browser
+		import cookie from browser
+
 	--debug
 		Print a lot of extra information.
 
@@ -380,6 +383,7 @@ var (
 	filePerms         uint
 	dirPerms          uint
 	retrySecs         int
+	browserCookie     bool
 	downloadThumbnail bool
 	addMeta           bool
 	writeDesc         bool
@@ -470,6 +474,7 @@ func init() {
 	cliFlags.BoolVar(&disableSaveState, "disable-save-state", false, "Disable resumable download state.")
 	cliFlags.StringVar(&cookieFile, "c", "", "Cookies to be used when downloading.")
 	cliFlags.StringVar(&cookieFile, "cookies", "", "Cookies to be used when downloading.")
+	cliFlags.BoolVar(&browserCookie, "cookies-from-browser", false, "import cookie from browser.")
 	cliFlags.StringVar(&fnameFormat, "o", DefaultFilenameFormat, "Filename output format.")
 	cliFlags.StringVar(&fnameFormat, "output", DefaultFilenameFormat, "Filename output format.")
 	cliFlags.StringVar(&tempDir, "td", "", "Temporary directory for downloading files.")
@@ -653,7 +658,28 @@ func run() int {
 		}
 
 		client.Jar = cjar
-		LogInfo("Loaded cookie file %s", cookieFile)
+		yt, _ := url.Parse("https://youtube.com")
+		ytcookie := cjar.Cookies(yt)
+		LogInfo("Loaded cookie file %s, found %d", cookieFile, len(ytcookie))
+		for _, c := range ytcookie {
+			LogInfo("youtube cookie: %v", c)
+		}
+	}
+
+	if browserCookie {
+		cjar, err := info.ImportBrowserCookie()
+		if err != nil {
+			LogError("Failed to import browser cookies : %s", err)
+			return 1
+		}
+
+		client.Jar = cjar
+		yt, _ := url.Parse("https://youtube.com")
+		ytcookie := cjar.Cookies(yt)
+		LogInfo("Loaded browser cookie %s, found %d", cookieFile, len(ytcookie))
+		for _, c := range ytcookie {
+			LogInfo("youtube cookie: %v", c)
+		}
 	}
 
 	if !info.GVideoDDL && !info.GetVideoInfo() {
